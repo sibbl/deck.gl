@@ -19,9 +19,8 @@
 // THE SOFTWARE.
 
 /* global fetch */
-
 import {Layer, createIterable} from '@deck.gl/core';
-import {fp64, ScenegraphNode, log} from '@luma.gl/core';
+import {fp64, ScenegraphNode, isWebGL2, pbr, log} from '@luma.gl/core';
 import {load} from '@loaders.gl/core';
 
 import {MATRIX_ATTRIBUTES} from '../utils/matrix';
@@ -50,6 +49,9 @@ const defaultProps = {
   sizeScale: {type: 'number', value: 1, min: 0},
   getPosition: {type: 'accessor', value: x => x.position},
   getColor: {type: 'accessor', value: DEFAULT_COLOR},
+
+  // flat or pbr
+  _lighting: 'flat',
 
   // yaw, pitch and roll are in degrees
   // https://en.wikipedia.org/wiki/Euler_angles
@@ -183,14 +185,28 @@ export default class ScenegraphLayer extends Layer {
     }
   }
 
+  addVersionToShader(source) {
+    if (isWebGL2(this.context.gl)) {
+      return `#version 300 es\n${source}`;
+    }
+
+    return source;
+  }
+
   getLoadOptions() {
+    const modules = ['project32', 'picking'];
+
+    if (this.props._lighting === 'pbr') {
+      modules.push(pbr);
+    }
+
     return {
       gl: this.context.gl,
       waitForFullLoad: true,
       modelOptions: {
-        vs,
-        fs,
-        modules: ['project32', 'picking'],
+        vs: this.addVersionToShader(vs),
+        fs: this.addVersionToShader(fs),
+        modules,
         isInstanced: true
       }
     };

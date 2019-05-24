@@ -52,6 +52,8 @@ const defaultProps = {
 
   // flat or pbr
   _lighting: 'flat',
+  // _lighting must be pbr for this to work
+  _imageBasedLightingEnvironment: null,
 
   // yaw, pitch and roll are in degrees
   // https://en.wikipedia.org/wiki/Euler_angles
@@ -195,14 +197,25 @@ export default class ScenegraphLayer extends Layer {
 
   getLoadOptions() {
     const modules = ['project32', 'picking'];
+    const {_lighting, _imageBasedLightingEnvironment} = this.props;
 
-    if (this.props._lighting === 'pbr') {
+    if (_lighting === 'pbr') {
       modules.push(pbr);
+    }
+
+    let env = null;
+    if (_imageBasedLightingEnvironment) {
+      if (typeof _imageBasedLightingEnvironment === 'function') {
+        env = _imageBasedLightingEnvironment({gl: this.context.gl, layer: this});
+      } else {
+        env = _imageBasedLightingEnvironment;
+      }
     }
 
     return {
       gl: this.context.gl,
       waitForFullLoad: true,
+      imageBasedLightingEnvironment: env,
       modelOptions: {
         vs: this.addVersionToShader(vs),
         fs: this.addVersionToShader(fs),
